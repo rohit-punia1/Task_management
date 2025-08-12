@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import useSWR from "swr";
 import useDebounce from "@/hooks/useDebounce";
 import { getTasks } from "@/lib/task/taskapis";
@@ -8,19 +8,31 @@ import TaskCard from "@/components/TaskCard";
 import { useRouter } from "next/navigation";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/Error";
+import PageTitle from "@/components/PageTitle";
 
-export default function Tasks(props) {
+export default function Tasks() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
 
   const debouncedSearch = useDebounce(search, 500);
 
-  const handleTaskClick = (task) => {
-    if (task) router.push(`/tasks/${task.id}`);
-  };
+  const handleTaskClick = useCallback(
+    (task) => {
+      if (task) router.push(`/tasks/${task.id}`);
+    },
+    [router]
+  );
 
-  const { data: tasks = [], error, isLoading } = useSWR(["/todos"], getTasks);
+  const {
+    data: tasks = [],
+    error,
+    isLoading,
+  } = useSWR(["/todos"], getTasks, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: Infinity,
+  });
 
   const filteredTasks =
     debouncedSearch !== "" || status !== ""
@@ -36,33 +48,25 @@ export default function Tasks(props) {
         })
       : [];
 
-  if (isLoading) {
-    return <Loading />
-  }
-
-  if (error) {
-    return (
-      <ErrorMessage message={error.message} />
-    );
-  }
+  if (isLoading) return <Loading />;
+  if (error) return <ErrorMessage message={error.message} />;
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Task List</h1>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <PageTitle title="Task List" />
+      {/* Filter Section */}
+      <div className="bg-white shadow-md rounded-xl p-4 flex flex-col sm:flex-row gap-4 mb-8 border border-gray-100">
         <input
           type="text"
           placeholder="Search by title..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border p-2 rounded w-full sm:w-1/2"
+          className="border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 p-2 rounded-lg w-full sm:w-1/2 outline-none transition"
         />
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="border p-2 rounded w-full sm:w-1/4"
+          className="border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 p-2 rounded-lg w-full sm:w-1/4 outline-none transition"
         >
           <option value="all">All</option>
           <option value="completed">Completed</option>
@@ -70,17 +74,21 @@ export default function Tasks(props) {
         </select>
       </div>
 
-      {/* Table/Grid */}
+      {/* Task List */}
       {filteredTasks.length === 0 ? (
-        <div className="text-center py-3">No tasks found.</div>
+        <div className="text-center py-10 text-gray-500 bg-white rounded-lg shadow-sm border">
+          No tasks found. Try changing your filters.
+        </div>
       ) : (
-        <div className="overflow-x-auto  ">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredTasks.map((task) => (
-            <TaskCard
+            <div
               key={task.id}
-              task={task}
+              className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition cursor-pointer border border-gray-100"
               onClick={() => handleTaskClick(task)}
-            />
+            >
+              <TaskCard task={task} />
+            </div>
           ))}
         </div>
       )}
