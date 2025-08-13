@@ -9,17 +9,22 @@ import { useRouter } from "next/navigation";
 import Loading from "@/components/Loading";
 import ErrorMessage from "@/components/Error";
 import PageTitle from "@/components/PageTitle";
+import { useTask } from "@/context/TaskConext";
 
 export default function Tasks() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
+  const { setTask } = useTask();
 
   const debouncedSearch = useDebounce(search, 500);
 
   const handleTaskClick = useCallback(
     (task) => {
-      if (task) router.push(`/tasks/${task.id}`);
+      if (task) {
+        
+        router.push(`/tasks/${task.id}`);
+      }
     },
     [router]
   );
@@ -29,6 +34,9 @@ export default function Tasks() {
     error,
     isLoading,
   } = useSWR(["/todos"], getTasks, {
+    onSuccess:(data)=>{
+      setTask(data.data);
+    },
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     dedupingInterval: Infinity,
